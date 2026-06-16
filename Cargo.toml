@@ -1,0 +1,32 @@
+[package]
+name = "httpstat"
+version = "2.0.0"
+edition = "2021"
+rust-version = "1.74"
+description = "curl statistics made simple — now in native Rust"
+license = "MIT"
+homepage = "https://github.com/reorx/httpstat"
+repository = "https://github.com/reorx/httpstat"
+readme = "README.md"
+keywords = ["http", "curl", "performance", "cli", "timing"]
+categories = ["command-line-utilities"]
+
+[[bin]]
+name = "httpstat"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+url = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+rustls = { version = "0.23", default-features = false, features = ["std", "tls12", "ring"] }
+rustls-pki-types = "1"
+webpki-roots = "0.26"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

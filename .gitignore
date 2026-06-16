@@ -15,5 +15,8 @@
 # Sphinx documentation
 docs/_build/
 
+# Rust #
+/target/
+
 # Others #
 .virtualenv
