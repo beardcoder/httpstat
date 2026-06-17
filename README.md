@@ -25,8 +25,27 @@ Grab the archive for your platform from the
 [latest release](https://github.com/beardcoder/httpstat/releases/latest),
 extract it, and put the `httpstat` binary on your `PATH`:
 
+**macOS (Apple Silicon):**
+
 ```bash
-# example: Linux x86_64
+curl -fsSL -o httpstat.tar.gz \
+  https://github.com/beardcoder/httpstat/releases/latest/download/httpstat-aarch64-apple-darwin.tar.gz
+tar -xzf httpstat.tar.gz
+sudo install httpstat /usr/local/bin/
+```
+
+**macOS (Intel):**
+
+```bash
+curl -fsSL -o httpstat.tar.gz \
+  https://github.com/beardcoder/httpstat/releases/latest/download/httpstat-x86_64-apple-darwin.tar.gz
+tar -xzf httpstat.tar.gz
+sudo install httpstat /usr/local/bin/
+```
+
+**Linux x86_64:**
+
+```bash
 curl -fsSL -o httpstat.tar.gz \
   https://github.com/beardcoder/httpstat/releases/latest/download/httpstat-x86_64-unknown-linux-musl.tar.gz
 tar -xzf httpstat.tar.gz
