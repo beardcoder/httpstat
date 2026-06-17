@@ -91,7 +91,7 @@ httpstat -n 10 https://example.com
 
 A live progress bar tracks the runs (shown only on an interactive terminal, so
 piped output stays clean). The timing box then shows the averaged milestones,
-followed by a proportional phase bar and the spread of the total time:
+followed by the spread of the total time:
 
 ```
 averaged over 10 runs — total min 234ms · mean 301ms · max 401ms
