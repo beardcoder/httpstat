@@ -1,22 +1,11 @@
-# Mac #
+# macOS
 .DS_Store
 
-# Vim swap files #
+# Vim swap files
 *.sw[po]
 
-# Byte-compiled
-*.py[cod]
-
-# Distribution / packaging
-/build/
-/dist/
-*.egg-info/
-
-# Sphinx documentation
-docs/_build/
-
-# Rust #
+# Rust
 /target/
 
-# Others #
-.virtualenv
+# Release artifacts
+/dist/

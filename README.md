@@ -2,9 +2,12 @@
 
 ![screenshot](screenshot.png)
 
-httpstat visualizes `curl(1)` statistics in a way of beauty and clarity.
+httpstat visualizes HTTP request timings in a way of beauty and clarity.
 
-It is a **single file🌟** Python script that has **no dependency👏** and is compatible with **Python 3🍻**.
+It is a **single static binary 🌟** written in **native Rust 🦀** with **no runtime
+dependency 👏** — the HTTP request is performed in-process (no `curl` binary), and
+TLS is handled by a pure-Rust stack (rustls + ring), so the Linux builds link
+statically with no OpenSSL.
 
 ## Features
 
@@ -13,53 +16,67 @@ It is a **single file🌟** Python script that has **no dependency👏** and is 
 - **SLO threshold checking** — `--slo total=500,connect=100` exits with code 4 on violation
 - **Save results to file** — `--save path.json` for multi-step workflows
 - **NO_COLOR support** — respects the [NO_COLOR](https://no-color.org) convention
-- **Agent skill** — built-in [skill](skills/httpstat/SKILL.md) for agent-assisted HTTP performance diagnostics
-
 
 ## Installation
 
-There are three ways to get `httpstat`:
+### Download a prebuilt binary
 
-- Download the script directly: `wget https://raw.githubusercontent.com/reorx/httpstat/master/httpstat.py`
-
-- Through pip: `pip install httpstat`
-
-- Through homebrew (macOS only): `brew install httpstat`
-
-> For Windows users, @davecheney's [Go version](https://github.com/davecheney/httpstat) is suggested. → [download link](https://github.com/davecheney/httpstat/releases)
-
-## Skills
-
-httpstat ships with an agent [skill](skills/httpstat/SKILL.md) that teaches AI coding assistants (Claude Code, Cursor, etc.) how to use httpstat for HTTP performance diagnostics — automatic installation, bottleneck identification, and actionable fix suggestions.
-
-Install the skill into your project:
+Grab the archive for your platform from the
+[latest release](https://github.com/beardcoder/httpstat/releases/latest),
+extract it, and put the `httpstat` binary on your `PATH`:
 
 ```bash
-npx skills add reorx/httpstat
+# example: Linux x86_64
+curl -fsSL -o httpstat.tar.gz \
+  https://github.com/beardcoder/httpstat/releases/latest/download/httpstat-x86_64-unknown-linux-musl.tar.gz
+tar -xzf httpstat.tar.gz
+sudo install httpstat /usr/local/bin/
 ```
 
-Once installed, your agent will automatically use httpstat when you ask questions like "why is this API slow?" or "debug this endpoint's latency".
+Available targets: `x86_64-unknown-linux-musl`, `aarch64-unknown-linux-musl`,
+`x86_64-apple-darwin`, `aarch64-apple-darwin`.
+
+### Install with cargo
+
+```bash
+cargo install --git https://github.com/beardcoder/httpstat
+```
+
+### Build from source
+
+```bash
+git clone https://github.com/beardcoder/httpstat
+cd httpstat
+cargo build --release
+# binary at target/release/httpstat
+```
 
 ## Usage
-
-Simply:
-
-```bash
-python httpstat.py httpbin.org/get
-```
-
-If installed through pip or brew, you can use `httpstat` as a command:
 
 ```bash
 httpstat httpbin.org/get
 ```
 
-### cURL Options
+A bare host is accepted and defaults to `http://`. The request is issued
+in-process — only the documented options below are supported (not arbitrary
+curl flags). Run `httpstat --help` for the full list.
 
-Because `httpstat` is a wrapper of cURL, you can pass any cURL supported option after the url (except for `-w`, `-D`, `-o`, `-s`, `-S` which are already used by `httpstat`):
+| Option | Description |
+| --- | --- |
+| `-f, --format <FORMAT>` | Output format: `pretty` (default), `json`, `jsonl` |
+| `--slo <SPEC>` | SLO thresholds, e.g. `total=500,connect=100` (exit 4 on violation) |
+| `--save <PATH>` | Save the structured JSON result to a file |
+| `-X, --request <METHOD>` | HTTP method (defaults to GET, or POST when `--data` is given) |
+| `-H, --header <HEADER>` | Extra request header `Name: Value` (repeatable) |
+| `-d, --data <DATA>` | Request body data |
+| `-L, --location` | Follow HTTP redirects |
+| `-k, --insecure` | Skip TLS certificate verification |
+| `-A, --user-agent <UA>` | User-Agent header value |
+| `--connect-timeout <SECONDS>` | Maximum time allowed for the TCP connection |
+| `--max-time <SECONDS>` | Maximum total time allowed for the transfer |
 
 ```bash
-httpstat httpbin.org/post -X POST --data-urlencode "a=b" -v
+httpstat httpbin.org/post -X POST -d '{"a":"b"}' -H 'Content-Type: application/json' -L
 ```
 
 ### Structured Output
@@ -77,7 +94,7 @@ httpstat httpbin.org/get --format json
   "ok": true,
   "exit_code": 0,
   "response": {
-    "status_line": "HTTP/2 200",
+    "status_line": "HTTP/1.1 200 OK",
     "status_code": 200,
     "remote_ip": "...",
     "remote_port": "443",
@@ -131,74 +148,20 @@ httpstat httpbin.org/get --format json --save result.json
 
 ### Environment Variables
 
-`httpstat` has a bunch of environment variables to control its behavior.
-Here are some usage demos, you can also run `httpstat --help` to see full explanation.
+Run `httpstat --help` to see the full explanation. All booleans accept
+`1/true/yes/on` and `0/false/no/off`.
 
-- <strong><code>HTTPSTAT_SHOW_BODY</code></strong>
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `HTTPSTAT_SHOW_BODY` | `false` | Show response body (truncated to 1024 bytes) |
+| `HTTPSTAT_SHOW_IP` | `true` | Show remote/local IP and port |
+| `HTTPSTAT_SHOW_SPEED` | `false` | Show download/upload speed |
+| `HTTPSTAT_SAVE_BODY` | `true` | Store body in a temp file |
+| `HTTPSTAT_METRICS_ONLY` | `false` | Equivalent to `--format json` (kept for compatibility) |
+| `HTTPSTAT_DEBUG` | `false` | Print resolved options to stderr |
+| `NO_COLOR` | unset | When set to any value, disables colored output ([no-color.org](https://no-color.org)) |
 
-  Set to `true` to show response body in the output, note that body length
-  is limited to 1023 bytes, will be truncated if exceeds. Default is `false`.
-
-- <strong><code>HTTPSTAT_SHOW_IP</code></strong>
-
-  By default httpstat shows remote and local IP/port address.
-  Set to `false` to disable this feature. Default is `true`.
-
-- <strong><code>HTTPSTAT_SHOW_SPEED</code></strong>
-
-  Set to `true` to show download and upload speed.  Default is `false`.
-
-  ```bash
-  HTTPSTAT_SHOW_SPEED=true httpstat http://cachefly.cachefly.net/10mb.test
-  
-  ...
-  speed_download: 3193.3 KiB/s, speed_upload: 0.0 KiB/s
-  ```
-
-- <strong><code>HTTPSTAT_SAVE_BODY</code></strong>
-
-  By default httpstat stores body in a tmp file,
-  set to `false` to disable this feature. Default is `true`
-
-- <strong><code>HTTPSTAT_CURL_BIN</code></strong>
-
-  Indicate the cURL bin path to use. Default is `curl` from current shell $PATH.
-
-  This exampe uses brew installed cURL to make HTTP2 request:
-
-  ```bash
-  HTTPSTAT_CURL_BIN=/usr/local/Cellar/curl/7.50.3/bin/curl httpstat https://http2.akamai.com/ --http2
-  
-  HTTP/2 200
-  ...
-  ```
-
-  > cURL must be compiled with nghttp2 to enable http2 feature
-  > ([#12](https://github.com/reorx/httpstat/issues/12)).
-
-- <strong><code>HTTPSTAT_METRICS_ONLY</code></strong>
-
-  If set to `true`, httpstat will only output metrics in json format,
-  this is useful if you want to parse the data instead of reading it.
-
-  > **Note**: This is kept for backward compatibility. Prefer `--format json` instead.
-
-- <strong><code>HTTPSTAT_DEBUG</code></strong>
-
-  Set to `true` to see debugging logs. Default is `false`
-
-- <strong><code>NO_COLOR</code></strong>
-
-  When set (to any value), disables all colored output.
-  See [no-color.org](https://no-color.org) for the convention.
-
-  ```bash
-  NO_COLOR=1 httpstat httpbin.org/get
-  ```
-
-
-For convenience, you can export these environments in your `.zshrc` or `.bashrc`,
-example:
+For convenience, export these in your `.zshrc` or `.bashrc`:
 
 ```bash
 export HTTPSTAT_SHOW_IP=false
@@ -206,33 +169,24 @@ export HTTPSTAT_SHOW_SPEED=true
 export HTTPSTAT_SAVE_BODY=false
 ```
 
-## Related Projects
+## Development
 
-Here are some implementations in various languages:
+```bash
+make test     # cargo test
+make fmt      # cargo fmt
+make clippy   # cargo clippy -D warnings
+make build    # release build for the host
+make build-all  # cross-compile all release targets into dist/
+```
 
+CI runs fmt, clippy and tests on every push/PR; pushing a `v*` tag builds the
+cross-platform binaries and publishes a GitHub release.
 
-- Go: [davecheney/httpstat](https://github.com/davecheney/httpstat)
+## Credits
 
-  This is the Go alternative of httpstat, it's written in pure Go and relies no external programs. Choose it if you like solid binary executions (actually I do).
+A native Rust port of the original Python
+[reorx/httpstat](https://github.com/reorx/httpstat) by Reorx.
 
-- Go (library): [tcnksm/go-httpstat](https://github.com/tcnksm/go-httpstat)
+## License
 
-  Other than being a cli tool, this project is used as library to help debugging latency of HTTP requests in Go code, very thoughtful and useful, see more in this [article](https://medium.com/@deeeet/trancing-http-request-latency-in-golang-65b2463f548c#.mm1u8kfnu)
-
-- Bash: [b4b4r07/httpstat](https://github.com/b4b4r07/httpstat)
-
-  This is what exactly I want to do at the very beginning, but gave up due to not confident in my bash skill, good job!
-
-- Node: [yosuke-furukawa/httpstat](https://github.com/yosuke-furukawa/httpstat)
-
-  [b4b4r07](https://twitter.com/b4b4r07) mentioned this in his [article](https://tellme.tokyo/post/2016/09/25/213810), could be used as a HTTP client also.
-
-- PHP: [talhasch/php-httpstat](https://github.com/talhasch/php-httpstat)
-
-  The PHP implementation by @talhasch
-
-Some code blocks in `httpstat` are copied from other projects of mine, have a look:
-
-- [reorx/python-terminal-color](https://github.com/reorx/python-terminal-color) Drop-in single file library for printing terminal color.
-
-- [reorx/getenv](https://github.com/reorx/getenv) Environment variable definition with type.
+[MIT](LICENSE)
