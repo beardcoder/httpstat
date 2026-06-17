@@ -8,10 +8,12 @@ mod slo;
 mod timing;
 
 use std::fs;
+use std::io::IsTerminal;
 use std::process::ExitCode;
 use std::time::Duration;
 
 use clap::Parser;
+use indicatif::{ProgressBar, ProgressStyle};
 
 use cli::Cli;
 use color::Palette;
@@ -33,6 +35,21 @@ fn main() -> ExitCode {
             ExitCode::from(EXIT_USAGE)
         }
     }
+}
+
+/// A progress bar for multi-run requests, shown only when there is more than one
+/// run and stderr is a terminal (so piped/JSON output stays clean).
+fn make_progress(runs: usize) -> Option<ProgressBar> {
+    if runs <= 1 || !std::io::stderr().is_terminal() {
+        return None;
+    }
+    let style = ProgressStyle::with_template(
+        "  {spinner:.cyan} {pos}/{len} requests {wide_bar:.cyan/blue} {elapsed}",
+    )
+    .unwrap_or_else(|_| ProgressStyle::default_bar())
+    .progress_chars("█▉░");
+    let pb = ProgressBar::new(runs as u64).with_style(style);
+    Some(pb)
 }
 
 fn run(cli: Cli, palette: &Palette) -> Result<u8, String> {
@@ -89,9 +106,27 @@ fn run(cli: Cli, palette: &Palette) -> Result<u8, String> {
     }
 
     // Run the request `runs` times; report averaged timings over all of them.
+    // A progress bar (stderr, TTY only) gives feedback while the runs proceed.
+    let progress = make_progress(runs);
     let mut results: Vec<HttpResult> = Vec::with_capacity(runs);
     for _ in 0..runs {
-        results.push(http::fetch(&url, &opts)?);
+        match http::fetch(&url, &opts) {
+            Ok(res) => {
+                results.push(res);
+                if let Some(pb) = &progress {
+                    pb.inc(1);
+                }
+            }
+            Err(e) => {
+                if let Some(pb) = &progress {
+                    pb.finish_and_clear();
+                }
+                return Err(e);
+            }
+        }
+    }
+    if let Some(pb) = &progress {
+        pb.finish_and_clear();
     }
     let timing_samples: Vec<Timings> = results.iter().map(|r| r.timings).collect();
     let stats = (runs > 1).then(|| TotalStats::from_samples(&timing_samples));

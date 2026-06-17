@@ -71,12 +71,11 @@ pub fn render(
     } else {
         println!("{}", p.green(&r.status_line));
     }
+    // Align header values into a column by padding each key to the widest one.
+    let key_width = r.headers.iter().map(|(k, _)| k.len()).max().unwrap_or(0);
     for (k, v) in &r.headers {
-        println!(
-            "{}{}",
-            p.gray(14, &format!("{k}:")),
-            p.cyan(&format!(" {v}"))
-        );
+        let key = format!("{:<width$}", format!("{k}:"), width = key_width + 1);
+        println!("{}{}", p.gray(14, &key), p.cyan(&format!(" {v}")));
     }
     println!();
 
@@ -138,6 +137,10 @@ pub fn render(
     println!();
     println!("{stat}");
 
+    // A compact proportional phase bar, in the box's cyan accent.
+    println!();
+    println!("{}", phase_bar(p, &ranges, https));
+
     if let Some(s) = stats {
         println!();
         println!(
@@ -168,6 +171,38 @@ pub fn render(
             );
         }
     }
+}
+
+/// A compact proportional bar of the five timing phases: each phase is labelled
+/// and drawn with cyan blocks proportional to its share of the total, matching
+/// the box's accent color. Zero-width phases (e.g. TLS on plain HTTP) are skipped.
+fn phase_bar(p: &Palette, r: &crate::timing::Ranges, https: bool) -> String {
+    const BLOCKS: i64 = 30;
+    // On plain HTTP there is no TLS phase; the tiny ssl delta is measurement
+    // jitter, so drop it like the HTTP timing template does.
+    let ssl = if https { r.ssl } else { 0 };
+    let phases = [
+        ("DNS", r.dns),
+        ("TCP", r.connection),
+        ("TLS", ssl),
+        ("Server", r.server),
+        ("Transfer", r.transfer),
+    ];
+    let sum = phases.iter().map(|(_, v)| *v).sum::<i64>().max(1);
+
+    let mut out = String::new();
+    for (label, value) in phases {
+        if value <= 0 {
+            continue;
+        }
+        let n = ((value * BLOCKS + sum / 2) / sum).max(1) as usize;
+        out.push_str(&format!(
+            "{} {}  ",
+            p.gray(12, label),
+            p.cyan(&"█".repeat(n))
+        ));
+    }
+    out.trim_end().to_string()
 }
 
 fn save_body_to_tmp(body: &[u8]) -> Option<PathBuf> {
