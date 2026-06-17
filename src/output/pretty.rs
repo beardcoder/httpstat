@@ -11,21 +11,21 @@ use crate::timing::TotalStats;
 
 const HTTPS_TEMPLATE: &str = "\
   DNS Lookup   TCP Connection   TLS Handshake   Server Processing   Content Transfer
-[   {a0000}  |     {a0001}    |    {a0002}    |      {a0003}      |      {a0004}     ]
-             |                |               |                   |                  |
-    namelookup:{b0000}        |               |                   |                  |
-                        connect:{b0001}       |                   |                  |
-                                    pretransfer:{b0002}           |                  |
-                                                      starttransfer:{b0003}          |
+│   {a0000}  │     {a0001}    │    {a0002}    │      {a0003}      │      {a0004}     │
+             │                │               │                   │                  │
+    namelookup:{b0000}        │               │                   │                  │
+                        connect:{b0001}       │                   │                  │
+                                    pretransfer:{b0002}           │                  │
+                                                      starttransfer:{b0003}          │
                                                                                  total:{b0004}";
 
 const HTTP_TEMPLATE: &str = "\
   DNS Lookup   TCP Connection   Server Processing   Content Transfer
-[   {a0000}  |     {a0001}    |      {a0003}      |      {a0004}     ]
-             |                |                   |                  |
-    namelookup:{b0000}        |                   |                  |
-                        connect:{b0001}           |                  |
-                                      starttransfer:{b0003}          |
+│   {a0000}  │     {a0001}    │      {a0003}      │      {a0004}     │
+             │                │                   │                  │
+    namelookup:{b0000}        │                   │                  │
+                        connect:{b0001}           │                  │
+                                      starttransfer:{b0003}          │
                                                                  total:{b0004}";
 
 /// Behavioural toggles sourced from the `HTTPSTAT_*` environment variables.
@@ -134,6 +134,8 @@ pub fn render(
     ] {
         stat = stat.replace(token, &value);
     }
+    // Dim the vertical strokes so the cyan timing values stand out.
+    stat = stat.replace('│', &p.gray(12, "│"));
     println!();
     println!("{stat}");
 
