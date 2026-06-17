@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use crate::color::Palette;
 use crate::http::HttpResult;
 use crate::slo::Violation;
+use crate::timing::TotalStats;
 
 const HTTPS_TEMPLATE: &str = "\
   DNS Lookup   TCP Connection   TLS Handshake   Server Processing   Content Transfer
@@ -36,6 +37,7 @@ pub struct PrettyOpts {
 }
 
 /// Render the full pretty report to stdout.
+#[allow(clippy::too_many_arguments)]
 pub fn render(
     p: &Palette,
     result: &HttpResult,
@@ -44,9 +46,14 @@ pub fn render(
     download_kbs: f64,
     upload_kbs: f64,
     violations: &[Violation],
+    request_line: &str,
+    stats: Option<&TotalStats>,
 ) {
     let r = &result.response;
 
+    if !request_line.is_empty() {
+        println!("{}", p.bold(request_line));
+    }
     if opts.show_ip {
         println!(
             "Connected to {}:{} from {}:{}",
@@ -55,8 +62,8 @@ pub fn render(
             r.local_ip,
             r.local_port
         );
-        println!();
     }
+    println!();
 
     // Status line: "HTTP/1.1 200 OK" -> green("HTTP") gray("/") cyan("1.1 200 OK").
     if let Some((proto, rest)) = r.status_line.split_once('/') {
@@ -130,6 +137,20 @@ pub fn render(
     }
     println!();
     println!("{stat}");
+
+    if let Some(s) = stats {
+        println!();
+        println!(
+            "{}",
+            p.gray(
+                16,
+                &format!(
+                    "averaged over {} runs — total min {}ms · mean {}ms · max {}ms",
+                    s.runs, s.min_ms, s.mean_ms, s.max_ms
+                )
+            )
+        );
+    }
 
     if opts.show_speed {
         println!("speed_download: {download_kbs:.1} KiB/s, speed_upload: {upload_kbs:.1} KiB/s");

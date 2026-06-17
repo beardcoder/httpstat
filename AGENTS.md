@@ -12,7 +12,8 @@ checks. A port of the original Python `reorx/httpstat`.
   hand (DNS, TCP connect, TLS handshake, TTFB, transfer). TLS via rustls + ring;
   no curl, no OpenSSL. Tries every resolved address so an unreachable AAAA falls
   back to IPv4.
-- `src/timing.rs` — phase durations and derived milestones.
+- `src/timing.rs` — phase durations, derived milestones, and `--count` aggregation
+  (`Timings::mean`, `TotalStats` for the total min/mean/max spread).
 - `src/slo.rs` — `--slo key=value` parsing and violation checks (keys: total,
   connect, ttfb, dns, tls).
 - `src/color.rs` — ANSI coloring, honors `NO_COLOR`.

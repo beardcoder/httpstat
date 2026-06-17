@@ -34,6 +34,15 @@ fn invalid_format_exits_with_usage_error() {
 }
 
 #[test]
+fn count_zero_is_rejected() {
+    let out = bin()
+        .args(["--count", "0", "http://example.com"])
+        .output()
+        .unwrap();
+    assert!(!out.status.success());
+}
+
+#[test]
 fn invalid_slo_key_exits_with_usage_error() {
     let out = bin()
         .args(["--slo", "bogus=10", "http://example.com"])

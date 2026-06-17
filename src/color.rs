@@ -26,6 +26,9 @@ impl Palette {
         }
     }
 
+    pub fn bold(&self, s: &str) -> String {
+        self.paint("1", s)
+    }
     pub fn red(&self, s: &str) -> String {
         self.paint("31", s)
     }

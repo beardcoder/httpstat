@@ -6,6 +6,7 @@ use serde_json::{Map, Value};
 
 use crate::http::HttpResult;
 use crate::slo::Violation;
+use crate::timing::TotalStats;
 
 #[derive(Serialize)]
 struct JsonResult {
@@ -13,10 +14,20 @@ struct JsonResult {
     url: String,
     ok: bool,
     exit_code: i32,
+    runs: u32,
     response: JsonResponse,
     timings_ms: JsonTimings,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    total_stats_ms: Option<JsonTotalStats>,
     speed: JsonSpeed,
     slo: Option<JsonSlo>,
+}
+
+#[derive(Serialize)]
+struct JsonTotalStats {
+    min: i64,
+    mean: i64,
+    max: i64,
 }
 
 #[derive(Serialize)]
@@ -64,6 +75,7 @@ struct JsonViolation {
 /// Build and serialize the result. `slo` is `Some` only when the user requested
 /// SLO checking (an empty violation list then means it passed). `pretty`
 /// switches between 2-space indented JSON and single-line JSONL.
+#[allow(clippy::too_many_arguments)]
 pub fn render(
     result: &HttpResult,
     slo: Option<&[Violation]>,
@@ -71,6 +83,8 @@ pub fn render(
     download_kbs: f64,
     upload_kbs: f64,
     pretty: bool,
+    runs: u32,
+    stats: Option<&TotalStats>,
 ) -> String {
     let ranges = result.timings.ranges();
     let t = &result.timings;
@@ -85,6 +99,7 @@ pub fn render(
         url: result.final_url.clone(),
         ok: exit_code == 0,
         exit_code,
+        runs,
         response: JsonResponse {
             status_line: result.response.status_line.clone(),
             status_code: result.response.status_code,
@@ -104,6 +119,11 @@ pub fn render(
             pretransfer: t.pretransfer_ms,
             starttransfer: t.starttransfer_ms,
         },
+        total_stats_ms: stats.map(|s| JsonTotalStats {
+            min: s.min_ms,
+            mean: s.mean_ms,
+            max: s.max_ms,
+        }),
         speed: JsonSpeed {
             download_kbs,
             upload_kbs,

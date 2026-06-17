@@ -42,6 +42,16 @@ pub struct Cli {
     )]
     pub format: String,
 
+    /// Repeat the request N times and report the averaged timings.
+    #[arg(
+        short = 'n',
+        long = "count",
+        default_value_t = 1,
+        value_name = "N",
+        value_parser = clap::value_parser!(u32).range(1..)
+    )]
+    pub count: u32,
+
     /// SLO thresholds as key=value pairs, e.g. total=500,connect=100.
     /// Valid keys: total, connect, ttfb, dns, tls. Exits with code 4 on violation.
     #[arg(long = "slo", value_name = "SPEC")]

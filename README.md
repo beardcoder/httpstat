@@ -64,6 +64,7 @@ curl flags). Run `httpstat --help` for the full list.
 | Option | Description |
 | --- | --- |
 | `-f, --format <FORMAT>` | Output format: `pretty` (default), `json`, `jsonl` |
+| `-n, --count <N>` | Repeat the request N times and report averaged timings |
 | `--slo <SPEC>` | SLO thresholds, e.g. `total=500,connect=100` (exit 4 on violation) |
 | `--save <PATH>` | Save the structured JSON result to a file |
 | `-X, --request <METHOD>` | HTTP method (defaults to GET, or POST when `--data` is given) |
@@ -79,6 +80,25 @@ curl flags). Run `httpstat --help` for the full list.
 httpstat httpbin.org/post -X POST -d '{"a":"b"}' -H 'Content-Type: application/json' -L
 ```
 
+### Averaging Over Multiple Runs
+
+Pass `-n/--count` to issue the request several times and report the mean of each
+timing phase — handy for smoothing out jitter on a noisy connection:
+
+```bash
+httpstat -n 10 https://example.com
+```
+
+The timing box then shows the averaged milestones, followed by the spread of the
+total time:
+
+```
+averaged over 10 runs — total min 234ms · mean 301ms · max 401ms
+```
+
+In JSON output the run count is reported as `runs`, and `total_stats_ms`
+(`{min, mean, max}`) is added whenever `runs > 1`.
+
 ### Structured Output
 
 Use `--format` (`-f`) to get machine-readable output:
@@ -93,6 +113,7 @@ httpstat httpbin.org/get --format json
   "url": "httpbin.org/get",
   "ok": true,
   "exit_code": 0,
+  "runs": 1,
   "response": {
     "status_line": "HTTP/1.1 200 OK",
     "status_code": 200,

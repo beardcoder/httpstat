@@ -15,9 +15,10 @@ use clap::Parser;
 
 use cli::Cli;
 use color::Palette;
-use http::RequestOptions;
+use http::{HttpResult, RequestOptions};
 use output::{json, pretty, Format};
 use slo::Slo;
+use timing::{Timings, TotalStats};
 
 const EXIT_USAGE: u8 = 1;
 const EXIT_SLO: u8 = 4;
@@ -78,17 +79,38 @@ fn run(cli: Cli, palette: &Palette) -> Result<u8, String> {
         max_time: cli.max_time.map(Duration::from_secs_f64),
     };
 
+    let runs = cli.count as usize;
+
     if debug {
         eprintln!(
-            "[debug] url={url} method={} format={format:?} follow={} insecure={}",
+            "[debug] url={url} method={} format={format:?} follow={} insecure={} runs={runs}",
             opts.method, opts.follow_redirects, opts.insecure
         );
     }
 
-    let result = http::fetch(&url, &opts)?;
+    // Run the request `runs` times; report averaged timings over all of them.
+    let mut results: Vec<HttpResult> = Vec::with_capacity(runs);
+    for _ in 0..runs {
+        results.push(http::fetch(&url, &opts)?);
+    }
+    let timing_samples: Vec<Timings> = results.iter().map(|r| r.timings).collect();
+    let stats = (runs > 1).then(|| TotalStats::from_samples(&timing_samples));
+
+    // The last run carries the response/body shown; aggregate fields are averaged.
+    let mean_timings = Timings::mean(&timing_samples);
+    let mean_transfer = results.iter().map(|r| r.transfer_secs).sum::<f64>() / runs as f64;
+    let mean_bytes =
+        (results.iter().map(|r| r.download_bytes).sum::<usize>() as f64 / runs as f64).round();
+    let mut result = results.pop().expect("count >= 1 guarantees one run");
+    if runs > 1 {
+        result.timings = mean_timings;
+        result.transfer_secs = mean_transfer;
+        result.download_bytes = mean_bytes as usize;
+    }
 
     let download_kbs = output::kbs(result.download_bytes, result.transfer_secs);
     let upload_kbs = 0.0;
+    let request_line = format!("{} {url}", opts.method);
 
     let violations = slo
         .as_ref()
@@ -106,6 +128,8 @@ fn run(cli: Cli, palette: &Palette) -> Result<u8, String> {
                 download_kbs,
                 upload_kbs,
                 format == Format::Json,
+                runs as u32,
+                stats.as_ref(),
             );
             println!("{text}");
             if let Some(path) = &cli.save {
@@ -129,6 +153,8 @@ fn run(cli: Cli, palette: &Palette) -> Result<u8, String> {
                 download_kbs,
                 upload_kbs,
                 &violations,
+                &request_line,
+                stats.as_ref(),
             );
             if let Some(path) = &cli.save {
                 let text = json::render(
@@ -138,6 +164,8 @@ fn run(cli: Cli, palette: &Palette) -> Result<u8, String> {
                     download_kbs,
                     upload_kbs,
                     true,
+                    runs as u32,
+                    stats.as_ref(),
                 );
                 fs::write(path, format!("{text}\n"))
                     .map_err(|e| format!("could not write {path}: {e}"))?;
