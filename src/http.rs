@@ -199,16 +199,31 @@ fn fetch_once(url: &Url, opts: &RequestOptions) -> Result<HttpResult, String> {
         .map_err(|e| format!("DNS lookup failed for {host}:{port}: {e}"))?
         .collect();
     let namelookup = start.elapsed();
-    let addr = *addrs
-        .first()
-        .ok_or_else(|| format!("no addresses resolved for {host}"))?;
-
-    // TCP connect.
-    let tcp = match opts.connect_timeout {
-        Some(d) => TcpStream::connect_timeout(&addr, d),
-        None => TcpStream::connect(addr),
+    if addrs.is_empty() {
+        return Err(format!("no addresses resolved for {host}"));
     }
-    .map_err(|e| format!("TCP connect to {addr} failed: {e}"))?;
+
+    // TCP connect — try each resolved address in turn so a host that advertises
+    // an unreachable AAAA record still connects over its working IPv4 address.
+    let mut tcp = None;
+    let mut last_err = None;
+    for addr in &addrs {
+        let attempt = match opts.connect_timeout {
+            Some(d) => TcpStream::connect_timeout(addr, d),
+            None => TcpStream::connect(*addr),
+        };
+        match attempt {
+            Ok(stream) => {
+                tcp = Some(stream);
+                break;
+            }
+            Err(e) => last_err = Some((*addr, e)),
+        }
+    }
+    let tcp = tcp.ok_or_else(|| {
+        let (addr, e) = last_err.expect("addrs is non-empty");
+        format!("TCP connect to {addr} failed: {e}")
+    })?;
     let connect = start.elapsed();
 
     let local = tcp.local_addr().map_err(|e| e.to_string())?;
