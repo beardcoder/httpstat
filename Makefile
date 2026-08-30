@@ -10,7 +10,7 @@ DIST       := dist
 LINUX_TARGETS  := x86_64-unknown-linux-musl aarch64-unknown-linux-musl
 MACOS_TARGETS  := x86_64-apple-darwin aarch64-apple-darwin
 
-.PHONY: help build test fmt clippy clean \
+.PHONY: help build test fmt clippy fmt-check check clean \
         build-all build-linux build-macos install-targets dist
 
 help: ## Show this help
@@ -21,13 +21,18 @@ build: ## Build a release binary for the host
 	cargo build --release
 
 test: ## Run the test suite
-	cargo test
+	cargo test --all
 
 fmt: ## Format the code
 	cargo fmt
 
 clippy: ## Lint with clippy (warnings as errors)
 	cargo clippy --all-targets -- -D warnings
+
+fmt-check: ## Verify formatting without rewriting anything
+	cargo fmt --all -- --check
+
+check: fmt-check clippy test ## Run the same gate CI runs
 
 clean: ## Remove build artifacts
 	cargo clean
