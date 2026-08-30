@@ -17,8 +17,9 @@ keep it that way.
   contract the project documented but did not implement. Scripts that treated any
   non-zero exit as "request failed" are unaffected; scripts that matched on `1`
   specifically should be checked.
-- **The minimum supported Rust version is now 1.85**, which is what the locked
-  dependency set has required in practice.
+- **The minimum supported Rust version is now 1.86**, which is what the locked
+  dependency set has required in practice (`clap` needs 1.85, and the `icu`
+  crates that `url` pulls in need 1.86).
 
 ### Fixed
 

@@ -107,7 +107,7 @@ cargo build --release
 # binary at target/release/httpstat
 ```
 
-Building requires Rust 1.85 or newer.
+Building requires Rust 1.86 or newer.
 
 ## Usage
 

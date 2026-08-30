@@ -2,7 +2,7 @@
 name = "httpstat"
 version = "3.0.0"
 edition = "2021"
-rust-version = "1.85"
+rust-version = "1.86"
 description = "See where the time in an HTTP request goes: a single static binary that breaks a request down into DNS, TCP, TLS, server and transfer time, with JSON output and SLO thresholds"
 license = "MIT"
 homepage = "https://github.com/beardcoder/httpstat"

@@ -11,7 +11,7 @@ cd httpstat
 make check     # fmt --check, clippy -D warnings, and the tests
 ```
 
-Rust 1.85 or newer is required (`rust-version` in `Cargo.toml`).
+Rust 1.86 or newer is required (`rust-version` in `Cargo.toml`).
 
 ## Before you open a pull request
 
