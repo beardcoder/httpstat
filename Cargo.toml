@@ -1,15 +1,23 @@
 [package]
 name = "httpstat"
-version = "2.2.1"
+version = "3.0.0"
 edition = "2021"
-rust-version = "1.74"
-description = "curl statistics made simple — now in native Rust"
+rust-version = "1.86"
+description = "See where the time in an HTTP request goes: a single static binary that breaks a request down into DNS, TCP, TLS, server and transfer time, with JSON output and SLO thresholds"
 license = "MIT"
-homepage = "https://github.com/reorx/httpstat"
-repository = "https://github.com/reorx/httpstat"
+homepage = "https://github.com/beardcoder/httpstat"
+repository = "https://github.com/beardcoder/httpstat"
 readme = "README.md"
-keywords = ["http", "curl", "performance", "cli", "timing"]
+keywords = ["http", "latency", "performance", "cli", "timing"]
 categories = ["command-line-utilities"]
+
+[lints.rust]
+# The crate performs no unsafe operations of its own and should not start.
+unsafe_code = "forbid"
+
+[lib]
+name = "httpstat"
+path = "src/lib.rs"
 
 [[bin]]
 name = "httpstat"
@@ -21,7 +29,7 @@ url = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 rustls = { version = "0.23", default-features = false, features = ["std", "tls12", "ring"] }
-rustls-pki-types = "1"
+rustls-pki-types = { version = "1", features = ["std"] }
 webpki-roots = "0.26"
 indicatif = "0.18.4"
 
